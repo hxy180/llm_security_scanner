@@ -65,16 +65,22 @@ The script is located in the ```scripts``` directory.  The scanner can be used t
 
 ```bash
 # Scan a single file
-python llm_security_scanner.py --file path/to/your/file.py
+python scripts/llm_security_scanner.py --file vulnerable-code/python/test.py
 
 # Scan a directory
-python llm_security_scanner.py --directory path/to/your/project
+python scripts/llm_security_scanner.py --directory vulnerable-code/python
 
 # Specify output format
-python llm_security_scanner.py --directory path/to/your/project --output-format markdown --output-file scan-results.md
+python scripts/llm_security_scanner.py --directory vulnerable-code/python --output-format markdown --output-file scan-results.md
 
 # Use Anthropic's Claude instead of OpenAI
-python llm_security_scanner.py --file path/to/your/file.py --provider anthropic
+python scripts/llm_security_scanner.py --file vulnerable-code/python/test.py --provider anthropic
+
+# Use DeepSeek model
+python scripts/llm_security_scanner.py --file vulnerable-code/python/test.py --provider deepseek
+
+# Use API key parameter (if environment variable is not set)
+python scripts/llm_security_scanner.py --file vulnerable-code/python/test.py --api-key your-api-key-here
 ```
 
 ## GitHub Actions Integration

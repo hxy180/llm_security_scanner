@@ -69,19 +69,22 @@
 
 ```bash
 # 扫描单个文件
-python llm_security_scanner.py --file path/to/your/file.py
+python scripts/llm_security_scanner.py --file vulnerable-code/python/test.py
 
 # 扫描目录
-python llm_security_scanner.py --directory path/to/your/project
+python scripts/llm_security_scanner.py --directory vulnerable-code/python
 
 # 指定输出格式
-python llm_security_scanner.py --directory path/to/your/project --output-format markdown --output-file scan-results.md
+python scripts/llm_security_scanner.py --directory vulnerable-code/python --output-format markdown --output-file scan-results.md
 
 # 使用 Anthropic 的 Claude 代替 OpenAI
-python llm_security_scanner.py --file path/to/your/file.py --provider anthropic
+python scripts/llm_security_scanner.py --file vulnerable-code/python/test.py --provider anthropic
 
 # 使用 DeepSeek 模型
-python llm_security_scanner.py --file path/to/your/file.py --provider deepseek
+python scripts/llm_security_scanner.py --file vulnerable-code/python/test.py --provider deepseek
+
+# 使用 API 密钥参数（如果未设置环境变量）
+python scripts/llm_security_scanner.py --file vulnerable-code/python/test.py --api-key your-api-key-here
 ```
 
 ## GitHub Actions 集成
