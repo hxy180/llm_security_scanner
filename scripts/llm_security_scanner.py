@@ -19,21 +19,26 @@ class CodeSecurityScanner:
     A security scanner that uses LLMs to detect vulnerabilities in code.
     """
     
-    def __init__(self, api_key: str, model: str = "gpt-4", provider: str = "openai"):
+    def __init__(self, api_key: str, model: str = "gpt-4", provider: str = "openai", language: str = "en"):
         """
         Initialize the scanner with the API key and model.
         
         Args:
             api_key: API key for the LLM provider
             model: Model to use (default: gpt-4)
-            provider: LLM provider (openai or anthropic)
+            provider: LLM provider (openai, anthropic, or deepseek)
+            language: Language for the report (en or zh)
         """
         self.provider = provider
         self.model = model
+        self.language = language
         
         if provider == "openai":
             openai.api_key = api_key
-            self.api_key = api_key
+            openai.api_base = "https://api.openai.com/v1" # Reset to default
+        elif provider == "deepseek":
+            openai.api_key = api_key
+            openai.api_base = "https://api.deepseek.com"
         elif provider == "anthropic":
             # Anthropic's Claude API
             import anthropic
@@ -192,7 +197,7 @@ class CodeSecurityScanner:
         # Build the prompt for the LLM
         prompt = self._build_security_prompt(code, language)
         
-        if self.provider == "openai":
+        if self.provider in ["openai", "deepseek"]:
             return self._analyze_with_openai(prompt)
         elif self.provider == "anthropic":
             return self._analyze_with_anthropic(prompt)
@@ -210,7 +215,7 @@ class CodeSecurityScanner:
         Returns:
             Prompt for the LLM
         """
-        return f"""
+        prompt = f"""
         You are a cybersecurity expert specializing in secure coding practices and vulnerability detection.
         
         Analyze the following {language} code for security vulnerabilities, focusing on:
@@ -232,11 +237,18 @@ class CodeSecurityScanner:
         3. The specific line number(s) where the issue occurs
         4. The potential impact of exploiting the vulnerability
         5. A recommended fix with code example
+        """
         
+        if self.language == 'zh':
+            prompt += """
+        IMPORTANT: All text content in the JSON response (vulnerability_type, description, impact, recommendation) MUST be in Simplified Chinese (简体中文).
+        """
+        
+        prompt += """
         Format your response as a JSON array of objects, each representing a vulnerability, with the following structure:
         
         [
-            {{
+            {
                 "vulnerability_type": "Type of vulnerability",
                 "description": "Brief description",
                 "severity": "Severity level",
@@ -244,7 +256,7 @@ class CodeSecurityScanner:
                 "impact": "Potential impact",
                 "recommendation": "Recommended fix",
                 "fix_example": "Code example"
-            }},
+            },
             // additional vulnerabilities...
         ]
         
@@ -258,10 +270,12 @@ class CodeSecurityScanner:
         
         Provide only the JSON output without any additional text.
         """
+        
+        return prompt
     
     def _analyze_with_openai(self, prompt: str) -> List[Dict[str, Any]]:
         """
-        Analyze code using OpenAI's API.
+        Analyze code using OpenAI compatible API (supports OpenAI and DeepSeek).
         
         Args:
             prompt: Prompt for the LLM
@@ -270,9 +284,7 @@ class CodeSecurityScanner:
             List of identified vulnerabilities with details
         """
         try:
-            client = openai.OpenAI(api_key=openai.api_key)
-            
-            response = client.chat.completions.create(
+            response = openai.ChatCompletion.create(
                 model=self.model,
                 messages=[
                     {"role": "system", "content": "You are a cybersecurity expert that analyzes code for security vulnerabilities."},
@@ -282,6 +294,13 @@ class CodeSecurityScanner:
             )
             
             result = response.choices[0].message.content.strip()
+            
+            # Clean up markdown code blocks if present
+            if result.startswith("```"):
+                result = result.strip("`")
+                if result.startswith("json"):
+                    result = result[4:]
+                result = result.strip()
             
             try:
                 vulnerabilities = json.loads(result)
@@ -332,7 +351,7 @@ class CodeSecurityScanner:
             time.sleep(2)
             return []
 
-def generate_report(results: List[Dict[str, Any]], output_format: str = 'json', output_file: str = None) -> None:
+def generate_report(results: List[Dict[str, Any]], output_format: str = 'json', output_file: str = None, language: str = 'en') -> None:
     """
     Generate a report from scan results.
     
@@ -340,6 +359,7 @@ def generate_report(results: List[Dict[str, Any]], output_format: str = 'json', 
         results: Scan results
         output_format: Output format (json or markdown)
         output_file: Output file path
+        language: Language for the report (en or zh)
     """
     vulnerable_files = 0
     total_vulnerabilities = 0
@@ -363,40 +383,81 @@ def generate_report(results: List[Dict[str, Any]], output_format: str = 'json', 
         
         if output_file:
             with open(output_file, 'w', encoding='utf-8') as f:
-                json.dump(report, f, indent=2)
+                json.dump(report, f, indent=2, ensure_ascii=False)
         else:
-            print(json.dumps(report, indent=2))
+            print(json.dumps(report, indent=2, ensure_ascii=False))
             
     elif output_format == 'markdown':
-        markdown = "# Security Scan Report\n\n"
-        markdown += f"## Summary\n\n"
-        markdown += f"- Total Files Scanned: {summary['total_files_scanned']}\n"
-        markdown += f"- Files with Vulnerabilities: {summary['vulnerable_files']}\n"
-        markdown += f"- Total Vulnerabilities Found: {summary['total_vulnerabilities']}\n\n"
+        if language == 'zh':
+            title = "安全扫描报告"
+            summary_title = "摘要"
+            vuln_title = "漏洞详情"
+            no_vuln_title = "未发现漏洞"
+            total_files_label = "扫描文件总数"
+            vuln_files_label = "存在漏洞的文件数"
+            total_vuln_label = "发现的漏洞总数"
+            congrats_msg = "恭喜！在扫描的文件中未发现安全漏洞。"
+            severity_label = "严重程度"
+            line_numbers_label = "行号"
+            desc_label = "描述"
+            impact_label = "影响"
+            rec_label = "建议"
+            fix_label = "修复示例"
+            unknown_vuln = "未知漏洞"
+            unknown = "未知"
+            no_desc = "无描述"
+            unknown_impact = "未知影响"
+            no_rec = "无建议"
+        else:
+            title = "Security Scan Report"
+            summary_title = "Summary"
+            vuln_title = "Vulnerabilities"
+            no_vuln_title = "No Vulnerabilities Found"
+            total_files_label = "Total Files Scanned"
+            vuln_files_label = "Files with Vulnerabilities"
+            total_vuln_label = "Total Vulnerabilities Found"
+            congrats_msg = "Congratulations! No security vulnerabilities were detected in the scanned files."
+            severity_label = "Severity"
+            line_numbers_label = "Line Numbers"
+            desc_label = "Description"
+            impact_label = "Impact"
+            rec_label = "Recommendation"
+            fix_label = "Fix Example"
+            unknown_vuln = "Unknown Vulnerability"
+            unknown = "Unknown"
+            no_desc = "No description provided"
+            unknown_impact = "Unknown impact"
+            no_rec = "No recommendation provided"
+
+        markdown = f"# {title}\n\n"
+        markdown += f"## {summary_title}\n\n"
+        markdown += f"- {total_files_label}: {summary['total_files_scanned']}\n"
+        markdown += f"- {vuln_files_label}: {summary['vulnerable_files']}\n"
+        markdown += f"- {total_vuln_label}: {summary['total_vulnerabilities']}\n\n"
         
         if total_vulnerabilities > 0:
-            markdown += "## Vulnerabilities\n\n"
+            markdown += f"## {vuln_title}\n\n"
             
             for result in results:
                 if result.get('status') == 'completed' and result.get('vulnerabilities'):
                     markdown += f"### {result['file']}\n\n"
                     
                     for vuln in result.get('vulnerabilities', []):
-                        markdown += f"#### {vuln.get('vulnerability_type', 'Unknown Vulnerability')}\n\n"
-                        markdown += f"- **Severity**: {vuln.get('severity', 'Unknown')}\n"
-                        markdown += f"- **Line Numbers**: {', '.join(map(str, vuln.get('line_numbers', [])))}\n"
-                        markdown += f"- **Description**: {vuln.get('description', 'No description provided')}\n"
-                        markdown += f"- **Impact**: {vuln.get('impact', 'Unknown impact')}\n"
-                        markdown += f"- **Recommendation**: {vuln.get('recommendation', 'No recommendation provided')}\n"
+                        markdown += f"#### {vuln.get('vulnerability_type', unknown_vuln)}\n\n"
+                        markdown += f"- **{severity_label}**: {vuln.get('severity', unknown)}\n"
+                        markdown += f"- **{line_numbers_label}**: {', '.join(map(str, vuln.get('line_numbers', [])))}\n"
+                        markdown += f"- **{desc_label}**: {vuln.get('description', no_desc)}\n"
+                        markdown += f"- **{impact_label}**: {vuln.get('impact', unknown_impact)}\n"
+                        markdown += f"- **{rec_label}**: {vuln.get('recommendation', no_rec)}\n"
                         
                         if vuln.get('fix_example'):
-                            markdown += "\n**Fix Example**:\n\n```\n"
+                            markdown += f"\n**{fix_label}**:\n\n```\n"
                             markdown += f"{vuln.get('fix_example')}\n"
                             markdown += "```\n\n"
                             
         else:
-            markdown += "## No Vulnerabilities Found\n\n"
-            markdown += "Congratulations! No security vulnerabilities were detected in the scanned files.\n"
+            markdown += f"## {no_vuln_title}\n\n"
+            markdown += f"{congrats_msg}\n"
             
         if output_file:
             with open(output_file, 'w', encoding='utf-8') as f:
@@ -412,10 +473,11 @@ def main():
     
     # API configuration
     api_group = parser.add_argument_group('API Configuration')
-    api_group.add_argument('--provider', choices=['openai', 'anthropic'], default='openai',
+    api_group.add_argument('--provider', choices=['openai', 'anthropic', 'deepseek'], default='openai',
                           help='LLM provider (default: openai)')
-    api_group.add_argument('--api-key', help='API key for the LLM provider (can also be set with OPENAI_API_KEY or ANTHROPIC_API_KEY env var)')
+    api_group.add_argument('--api-key', help='API key for the LLM provider (can also be set with OPENAI_API_KEY, ANTHROPIC_API_KEY, or DEEPSEEK_API_KEY env var)')
     api_group.add_argument('--model', help='Model to use (default depends on provider)')
+    api_group.add_argument('--language', choices=['en', 'zh'], default='en', help='Language for the report (default: en)')
     
     # Scanning options
     scan_group = parser.add_argument_group('Scanning Options')
@@ -448,6 +510,8 @@ def main():
             api_key = os.getenv('OPENAI_API_KEY')
         elif args.provider == 'anthropic':
             api_key = os.getenv('ANTHROPIC_API_KEY')
+        elif args.provider == 'deepseek':
+            api_key = os.getenv('DEEPSEEK_API_KEY')
             
     if not api_key:
         parser.error(f'{args.provider.upper()}_API_KEY environment variable or --api-key must be set')
@@ -459,9 +523,11 @@ def main():
             model = 'gpt-4'
         elif args.provider == 'anthropic':
             model = 'claude-3-opus-20240229'
+        elif args.provider == 'deepseek':
+            model = 'deepseek-chat'
     
     # Initialize scanner
-    scanner = CodeSecurityScanner(api_key=api_key, model=model, provider=args.provider)
+    scanner = CodeSecurityScanner(api_key=api_key, model=model, provider=args.provider, language=args.language)
     
     # Perform scan
     if args.file:
@@ -474,7 +540,7 @@ def main():
         )
     
     # Generate report
-    generate_report(results, args.output_format, args.output_file)
+    generate_report(results, args.output_format, args.output_file, language=args.language)
     
 if __name__ == '__main__':
     main()

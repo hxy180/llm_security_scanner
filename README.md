@@ -16,7 +16,7 @@ This project implements a security scanning solution that leverages Large Langua
   - Recommended fixes with code examples
 - Can be run locally or in CI/CD pipelines
 - Creates GitHub issues for detected vulnerabilities
-- Supports both OpenAI and Anthropic models
+- Supports OpenAI, Anthropic, and DeepSeek models
 - Can scan individual files or entire directories
 - Generates reports in JSON or Markdown format
 
@@ -31,7 +31,7 @@ This project implements a security scanning solution that leverages Large Langua
 ## Prerequisites
 
 - Python 3.8 or later
-- An API key from OpenAI or Anthropic
+- An API key from OpenAI, Anthropic, or DeepSeek
 - GitHub repository for CI/CD integration
 
 ## Installation
@@ -99,7 +99,7 @@ To integrate the security scanner into your GitHub workflow:
    - Go to your repository on GitHub
    - Click on "Settings" > "Secrets and variables" > "Actions"
    - Click "New repository secret"
-   - Name: `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`
+   - Name: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `DEEPSEEK_API_KEY`
    - Value: Your API key
 
 5. Commit and push the changes:
