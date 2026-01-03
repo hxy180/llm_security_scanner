@@ -1,3 +1,5 @@
+**English** | [English](README_en.md)
+
 # 基于大语言模型的代码安全扫描器
 
 本项目实现了一个安全扫描解决方案，利用 Deepseek 或 GPT-4 或 Claude 等大语言模型 (LLM) 来检测代码库中的漏洞。它可以作为 CLI 工具在本地运行，也可以使用 GitHub Actions 集成到您的 CI/CD 流程中。
@@ -163,3 +165,6 @@ python llm_security_scanner.py --file path/to/your/file.py --provider deepseek
 ## 漏洞代码示例
 
 `vulnerable-code` 目录包含您可以扫描以测试发现结果的示例漏洞代码。目前它是一个存在漏洞的 Python 应用程序，但我会尽快添加更多语言的示例。
+
+## 贡献
+源项目地址为https://github.com/iknowjason/llm-security-scanner，本作者做了优化并添加支持了deepseek-api.
