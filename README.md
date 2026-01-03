@@ -1,4 +1,4 @@
-**English** | [English](README_en.md)
+**中文** | [English](README_en.md)
 
 # 基于大语言模型的代码安全扫描器
 
@@ -167,4 +167,4 @@ python llm_security_scanner.py --file path/to/your/file.py --provider deepseek
 `vulnerable-code` 目录包含您可以扫描以测试发现结果的示例漏洞代码。目前它是一个存在漏洞的 Python 应用程序，但我会尽快添加更多语言的示例。
 
 ## 贡献
-源项目地址为https://github.com/iknowjason/llm-security-scanner，本作者做了优化并添加支持了deepseek-api.
+源项目地址为https://github.com/iknowjason/llm-security-scanner 本作者仅做部分优化并添加支持deepseek-api.
